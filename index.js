@@ -4,24 +4,23 @@ import {
   createProgram
 } from './libgl.js';
 
+import {m4} from './twgl-full.module.js';
+
 const vertexShaderSource = `#version 300 es
 
 // an attribute is an input (in) to a vertex shader.
 // It will receive data from a buffer
-in vec2 a_position;
-
-// Used to pass in the resolution of the canvas
-uniform vec2 u_resolution;
+in vec4 a_position;
+in vec4 a_color;
 
 // A matrix to transform the positions by
-uniform mat3 u_matrix;
+uniform mat4 u_matrix;
+
+out vec4 v_color;
 
 // all shaders have a main function
 void main() {
-  // Multiply the position by the matrix.
-  vec2 position = (u_matrix * vec3(a_position, 1)).xy;
-
-  gl_Position = vec4(position / u_resolution * 2.0 - 1.0, 0, 1);
+  gl_Position = a_position * u_matrix;
 }
 `;
 
@@ -30,14 +29,14 @@ const fragmentShaderSource = `#version 300 es
 // fragment shaders don't have a default precision so we need
 // to pick one. highp is a good default. It means "high precision"
 precision highp float;
-uniform vec4 u_color;
+in vec4 v_color;
 
 // we need to declare an output for the fragment shader
 out vec4 outColor;
 
 void main() {
   // Just set the output to a constant
-  outColor = u_color;
+  outColor = vec4(1.0, 1.0, 0.0, 0.0);
 }
 `;
 
@@ -55,38 +54,36 @@ class Three {
     const program = createProgram(gl, vertexShader, fragmentShader);
     // we should have a glsl program on the gpu now!
 
-    this.colorLocation = gl.getUniformLocation(program, "u_color");
-    const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
     this.matrixLocation = gl.getUniformLocation(program, "u_matrix");
     const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
     const positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
     const vao = gl.createVertexArray();
 
     gl.bindVertexArray(vao);
     gl.enableVertexAttribArray(positionAttributeLocation);
 
-    const size = 2; // 2 components per iteration
-    const type = gl.FLOAT; // the data is 32bit floats
-    const normalize = false; // don't normalize the data
-    const stride = 0; // 0 = move forward size * sizeof(type) each iteration to get the next position
-    const attribOffset = 0; // start at the beginning of the buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    setGeometry(gl);
+
+    let size = 3; // 2 components per iteration
+    let type = gl.FLOAT; // the data is 32bit floats
+    let normalize = false; // don't normalize the data
+    let stride = 0; // 0 = move forward size * sizeof(type) each iteration to get the next position
+    let attribOffset = 0; // start at the beginning of the buffer
 
     gl.vertexAttribPointer(
       positionAttributeLocation, size, type, normalize, stride, attribOffset
     );
 
-    this.translation = [500, 500];
-    this.rotationInRadians = 0;
-    this.scale = [1, -1];
-    let translationMatrix = m3.translation(this.translation[0], this.translation[1]);
-    let rotationMatrix = m3.rotation(this.rotationInRadians);
-    let scaleMatrix = m3.scaling(this.scale[0], this.scale[1]);
-
-    // Multiply the matrices.
-    let matrix = m3.multiply(translationMatrix, rotationMatrix);
-    matrix = m3.multiply(matrix, scaleMatrix);
+    this.translation = [100, 0, -500];
+    this.rotation = [1, 1, 1];
+    this.scale = [1, 1, 1];
+    this.fieldOfView = Math.PI / 3;
+    let aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+    const zNear = 1;
+    const zFar = 2000;
+    this.matrix = m4.perspective(this.fieldOfView, aspect, zNear, zFar);
 
     resizeCanvasToDisplaySize(gl.canvas);
 
@@ -94,39 +91,44 @@ class Three {
 
     // Clear the canvas
     gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    // turn on depth testing
+    gl.enable(gl.DEPTH_TEST);
+
+    // tell webgl to cull faces
+    gl.enable(gl.CULL_FACE);
 
     // Tell it to use our program (pair of shaders)
     gl.useProgram(program);
-    gl.uniformMatrix3fv(this.matrixLocation, false, matrix);
-    gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
+    gl.uniformMatrix4fv(this.matrixLocation, false, this.matrix);
 
     // Bind the attribute/buffer set we want.
     gl.bindVertexArray(vao);
-
-    setGeometry(gl);
 
     this.draw(0);
   }
 
   draw(timestamp) {
-    // Give it a random color
-    //this.gl.uniform4f(this.colorLocation, Math.random(), Math.random(), Math.random(), 1);
-    this.gl.uniform4f(this.colorLocation, 1, 1, 0, 1);
-    let translationMatrix = m3.translation(this.translation[0], this.translation[1]);
-    this.rotationInRadians += 0.1;
-    let rotationMatrix = m3.rotation(this.rotationInRadians);
-    let scaleMatrix = m3.scaling(this.scale[0], this.scale[1]);
-
-    // Multiply the matrices.
-    let matrix = m3.multiply(translationMatrix, rotationMatrix);
-    matrix = m3.multiply(matrix, scaleMatrix);
-    this.gl.uniformMatrix3fv(this.matrixLocation, false, matrix);
+    const gl = this.gl;
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    let aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+    const zNear = 1;
+    const zFar = 2000;
+    //this.translation[0] += 1;
+    //this.translation[1] += 1;
+    this.matrix = m4.perspective(this.fieldOfView, aspect, zNear, zFar);
+    this.matrix = m4.translate(this.matrix, this.translation);
+    this.matrix = m4.rotateX(this.matrix, this.rotation[0]);
+    this.matrix = m4.rotateY(this.matrix, this.rotation[1]);
+    this.matrix = m4.rotateZ(this.matrix, this.rotation[2]);
+    this.matrix = m4.scale(this.matrix, this.scale);
+    this.gl.uniformMatrix4fv(this.matrixLocation, false, this.matrix);
 
     // Draw the rectangle.
     const primitiveType = this.gl.TRIANGLES;
     const offset = 0;
-    const count = 18;
+    const count = 16 * 6;
     this.gl.drawArrays(primitiveType, offset, count);
     window.requestAnimationFrame(this.draw.bind(this));
   }
@@ -134,177 +136,171 @@ class Three {
 
 const renderer = new Three();
 
-const button = document.querySelector('#draw');
-button.addEventListener('click', function (event) {
-  renderer.draw();
+const xSlider = document.querySelector('#x-axis');
+xSlider.addEventListener('input', (event) => {
+  renderer.translation[0] = event.target.value * 1000;
 });
+
+const ySlider = document.querySelector('#y-axis');
+ySlider.addEventListener('input', (event) => {
+  renderer.translation[1] = event.target.value * 1000;
+});
+
+const zSlider = document.querySelector('#z-axis');
+zSlider.addEventListener('input', (event) => {
+  renderer.translation[2] = event.target.value * 1000;
+});
+const xRot = document.querySelector('#x-rot');
+xSlider.addEventListener('input', (event) => {
+  renderer.rotation[0] = event.target.value * 2 * Math.PI;
+});
+
+const yRot = document.querySelector('#y-rot');
+ySlider.addEventListener('input', (event) => {
+  renderer.rotation[1] = event.target.value * 2 * Math.PI;
+});
+
+const zRot = document.querySelector('#z-rot');
+zSlider.addEventListener('input', (event) => {
+  renderer.rotation[2] = event.target.value * 2 * Math.PI;
+});
+
+// Fill the current ARRAY_BUFFER buffer
+// with the values that define a letter 'F'.
 function setGeometry(gl) {
   gl.bufferData(
       gl.ARRAY_BUFFER,
       new Float32Array([
-          // left column
-          0, 0,
-          30, 0,
-          0, 150,
-          0, 150,
-          30, 0,
-          30, 150,
+       // left column front
+          0,   0,  0,
+          0, 150,  0,
+          30,   0,  0,
+          0, 150,  0,
+          30, 150,  0,
+          30,   0,  0,
 
-          // top rung
-          30, 0,
-          100, 0,
-          30, 30,
-          30, 30,
-          100, 0,
-          100, 30,
+       // top rung front
+          30,   0,  0,
+          30,  30,  0,
+          100,   0,  0,
+          30,  30,  0,
+          100,  30,  0,
+          100,   0,  0,
 
-          // middle rung
-          30, 60,
-          67, 60,
-          30, 90,
-          30, 90,
-          67, 60,
-          67, 90,
+       // middle rung front
+          30,  60,  0,
+          30,  90,  0,
+          67,  60,  0,
+          30,  90,  0,
+          67,  90,  0,
+          67,  60,  0,
+
+       // left column back
+            0,   0,  30,
+           30,   0,  30,
+            0, 150,  30,
+            0, 150,  30,
+           30,   0,  30,
+           30, 150,  30,
+
+          // top rung back
+           30,   0,  30,
+          100,   0,  30,
+           30,  30,  30,
+           30,  30,  30,
+          100,   0,  30,
+          100,  30,  30,
+
+          // middle rung back
+           30,  60,  30,
+           67,  60,  30,
+           30,  90,  30,
+           30,  90,  30,
+           67,  60,  30,
+           67,  90,  30,
+
+          // top
+            0,   0,   0,
+          100,   0,   0,
+          100,   0,  30,
+            0,   0,   0,
+          100,   0,  30,
+            0,   0,  30,
+
+          // top rung right
+          100,   0,   0,
+          100,  30,   0,
+          100,  30,  30,
+          100,   0,   0,
+          100,  30,  30,
+          100,   0,  30,
+
+          // under top rung
+          30,   30,   0,
+          30,   30,  30,
+          100,  30,  30,
+          30,   30,   0,
+          100,  30,  30,
+          100,  30,   0,
+
+          // between top rung and middle
+          30,   30,   0,
+          30,   60,  30,
+          30,   30,  30,
+          30,   30,   0,
+          30,   60,   0,
+          30,   60,  30,
+
+          // top of middle rung
+          30,   60,   0,
+          67,   60,  30,
+          30,   60,  30,
+          30,   60,   0,
+          67,   60,   0,
+          67,   60,  30,
+
+          // right of middle rung
+          67,   60,   0,
+          67,   90,  30,
+          67,   60,  30,
+          67,   60,   0,
+          67,   90,   0,
+          67,   90,  30,
+
+          // bottom of middle rung.
+          30,   90,   0,
+          30,   90,  30,
+          67,   90,  30,
+          30,   90,   0,
+          67,   90,  30,
+          67,   90,   0,
+
+          // right of bottom
+          30,   90,   0,
+          30,  150,  30,
+          30,   90,  30,
+          30,   90,   0,
+          30,  150,   0,
+          30,  150,  30,
+
+          // bottom
+          0,   150,   0,
+          0,   150,  30,
+          30,  150,  30,
+          0,   150,   0,
+          30,  150,  30,
+          30,  150,   0,
+
+          // left side
+          0,   0,   0,
+          0,   0,  30,
+          0, 150,  30,
+          0,   0,   0,
+          0, 150,  30,
+          0, 150,   0,
       ]),
       gl.STATIC_DRAW);
 }
-
-// Fill the current ARRAY_BUFFER buffer
-// with the values that define a letter 'F'.
-// function setGeometry(gl) {
-//   gl.bufferData(
-//       gl.ARRAY_BUFFER,
-//       new Float32Array([
-//           // left column front
-//           0,   0,  0,
-//           0, 150,  0,
-//           30,   0,  0,
-//           0, 150,  0,
-//           30, 150,  0,
-//           30,   0,  0,
-
-//           // top rung front
-//           30,   0,  0,
-//           30,  30,  0,
-//           100,   0,  0,
-//           30,  30,  0,
-//           100,  30,  0,
-//           100,   0,  0,
-
-//           // middle rung front
-//           30,  60,  0,
-//           30,  90,  0,
-//           67,  60,  0,
-//           30,  90,  0,
-//           67,  90,  0,
-//           67,  60,  0,
-
-//           // left column back
-//             0,   0,  30,
-//            30,   0,  30,
-//             0, 150,  30,
-//             0, 150,  30,
-//            30,   0,  30,
-//            30, 150,  30,
-
-//           // top rung back
-//            30,   0,  30,
-//           100,   0,  30,
-//            30,  30,  30,
-//            30,  30,  30,
-//           100,   0,  30,
-//           100,  30,  30,
-
-//           // middle rung back
-//            30,  60,  30,
-//            67,  60,  30,
-//            30,  90,  30,
-//            30,  90,  30,
-//            67,  60,  30,
-//            67,  90,  30,
-
-//           // top
-//             0,   0,   0,
-//           100,   0,   0,
-//           100,   0,  30,
-//             0,   0,   0,
-//           100,   0,  30,
-//             0,   0,  30,
-
-//           // top rung right
-//           100,   0,   0,
-//           100,  30,   0,
-//           100,  30,  30,
-//           100,   0,   0,
-//           100,  30,  30,
-//           100,   0,  30,
-
-//           // under top rung
-//           30,   30,   0,
-//           30,   30,  30,
-//           100,  30,  30,
-//           30,   30,   0,
-//           100,  30,  30,
-//           100,  30,   0,
-
-//           // between top rung and middle
-//           30,   30,   0,
-//           30,   60,  30,
-//           30,   30,  30,
-//           30,   30,   0,
-//           30,   60,   0,
-//           30,   60,  30,
-
-//           // top of middle rung
-//           30,   60,   0,
-//           67,   60,  30,
-//           30,   60,  30,
-//           30,   60,   0,
-//           67,   60,   0,
-//           67,   60,  30,
-
-//           // right of middle rung
-//           67,   60,   0,
-//           67,   90,  30,
-//           67,   60,  30,
-//           67,   60,   0,
-//           67,   90,   0,
-//           67,   90,  30,
-
-//           // bottom of middle rung.
-//           30,   90,   0,
-//           30,   90,  30,
-//           67,   90,  30,
-//           30,   90,   0,
-//           67,   90,  30,
-//           67,   90,   0,
-
-//           // right of bottom
-//           30,   90,   0,
-//           30,  150,  30,
-//           30,   90,  30,
-//           30,   90,   0,
-//           30,  150,   0,
-//           30,  150,  30,
-
-//           // bottom
-//           0,   150,   0,
-//           0,   150,  30,
-//           30,  150,  30,
-//           0,   150,   0,
-//           30,  150,  30,
-//           30,  150,   0,
-
-//           // left side
-//           0,   0,   0,
-//           0,   0,  30,
-//           0, 150,  30,
-//           0,   0,   0,
-//           0, 150,  30,
-//           0, 150,   0,
-//       ]),
-//       gl.STATIC_DRAW);
-// }
 
 // Fill the current ARRAY_BUFFER buffer with colors for the 'F'.
 function setColors(gl) {
