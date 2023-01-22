@@ -7,22 +7,37 @@
 </head>
 <body>
     <div id="controls" style=
-    "position: absolute; top: 40 px; left: 40 px;">
-        <input id="x-axis" type="range" name="x-axis" min="-1" max=
-        "1" step="any"> <label style="color: white;" for="x-axis">X
-        Axis</label> <input id="y-axis" type="range" name="y-axis"
-        min="-1" max="1" step="any"> <label style="color: white;"
-        for="y-axis">Y Axis</label> <input id="z-axis" type="range"
-        name="z-axis" min="-1" max="0" step="any"> <label style=
-        "color: white;" for="z-axis">Z Axis</label> <input id=
-        "x-rot" type="range" name="x-rot" min="0" max="1" step=
-        "any"> <label style="color: white;" for="x-rot">X
-        Rotation</label> <input id="y-rot" type="range" name=
-        "y-rot" min="0" max="1" step="any"> <label style=
-        "color: white;" for="y-rot">Y Rotation</label> <input id=
-        "z-rot" type="range" name="z-rot" min="0" max="1" step=
-        "any"> <label style="color: white;" for="z-rot">Z
-        Rotation</label>
+    "position: absolute; top: 40 px; left: 40 px; display: flex;">
+        <div>
+            <input id="x-axis" type="range" name="x-axis" min="-1"
+            max="1" step="any"> <label style="color: white;" for=
+            "x-axis">X Axis</label>
+        </div>
+        <div>
+            <input id="y-axis" type="range" name="y-axis" min="-1"
+            max="1" step="any"> <label style="color: white;" for=
+            "y-axis">Y Axis</label>
+        </div>
+        <div>
+            <input id="z-axis" type="range" name="z-axis" min="-1"
+            max="0" step="any"> <label style="color: white;" for=
+            "z-axis">Z Axis</label>
+        </div>
+        <div>
+            <input id="x-rot" type="range" name="x-rot" min="-1"
+            max="1" step="any"> <label style="color: white;" for=
+            "x-rot">X Rotation</label>
+        </div>
+        <div>
+            <input id="y-rot" type="range" name="y-rot" min="-1"
+            max="1" step="any"> <label style="color: white;" for=
+            "y-rot">Y Rotation</label>
+        </div>
+        <div>
+            <input id="z-rot" type="range" name="z-rot" min="-1"
+            max="1" step="any"> <label style="color: white;" for=
+            "z-rot">Z Rotation</label>
+        </div>
     </div>
     <canvas style="width: 100%; height: 100%;" id="mainCanvas">
         Cool browser! Sucks it can't show this demo though
@@ -30,22 +45,5 @@
     <script type="module" src="index.js"></script>
     <!--script src="m4.js"></script-->
      <!-- <script src="m3.js"></script> -->
-
-    <script type="notjs">
-    #version 300 es
-
-    // an attribute is an input (in) to a vertex shader.
-    // It will receive data from a buffer
-    in vec2 a_position;
-    uniform vec2 u_resolution;
-
-    // all shaders have a main function
-    void main() {
-       // since we're passing in pixel coordinates,
-       // they need to be converted to clip space.
-       //
-       gl_Position = vec4(a_position / u_resolution * 2.0 - 1.0, 0, 1);
-    }
-    </script>
 </body>
 </html>

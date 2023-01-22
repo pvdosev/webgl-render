@@ -93,7 +93,7 @@ class Three {
       colorAttribLocation, size, type, normalize, stride, attribOffset
     );
 
-    this.translation = [100, 0, -500];
+    this.translation = [-500, 0, -500];
     this.rotation = [Math.PI / 3, Math.PI, Math.PI / 4];
     this.scale = [1, 1, 1];
     this.fieldOfView = Math.PI / 3;
@@ -171,17 +171,17 @@ zSlider.addEventListener('input', (event) => {
   renderer.translation[2] = event.target.value * 1000;
 });
 const xRot = document.querySelector('#x-rot');
-xSlider.addEventListener('input', (event) => {
+xRot.addEventListener('input', (event) => {
   renderer.rotation[0] = event.target.value * 2 * Math.PI;
 });
 
 const yRot = document.querySelector('#y-rot');
-ySlider.addEventListener('input', (event) => {
+yRot.addEventListener('input', (event) => {
   renderer.rotation[1] = event.target.value * 2 * Math.PI;
 });
 
 const zRot = document.querySelector('#z-rot');
-zSlider.addEventListener('input', (event) => {
+zRot.addEventListener('input', (event) => {
   renderer.rotation[2] = event.target.value * 2 * Math.PI;
 });
 
