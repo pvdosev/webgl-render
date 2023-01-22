@@ -20,7 +20,8 @@ out vec4 v_color;
 
 // all shaders have a main function
 void main() {
-  gl_Position = a_position * u_matrix;
+  gl_Position = u_matrix * a_position;
+  v_color = a_color;
 }
 `;
 
@@ -36,7 +37,7 @@ out vec4 outColor;
 
 void main() {
   // Just set the output to a constant
-  outColor = vec4(1.0, 1.0, 0.0, 0.0);
+  outColor = v_color;
 }
 `;
 
@@ -51,16 +52,16 @@ class Three {
 
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-    const program = createProgram(gl, vertexShader, fragmentShader);
+    this.program = createProgram(gl, vertexShader, fragmentShader);
     // we should have a glsl program on the gpu now!
 
-    this.matrixLocation = gl.getUniformLocation(program, "u_matrix");
-    const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+    this.matrixLocation = gl.getUniformLocation(this.program, "u_matrix");
+    const positionAttributeLocation = gl.getAttribLocation(this.program, "a_position");
     const positionBuffer = gl.createBuffer();
 
-    const vao = gl.createVertexArray();
+    this.vao = gl.createVertexArray();
 
-    gl.bindVertexArray(vao);
+    gl.bindVertexArray(this.vao);
     gl.enableVertexAttribArray(positionAttributeLocation);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -76,8 +77,24 @@ class Three {
       positionAttributeLocation, size, type, normalize, stride, attribOffset
     );
 
+    const colorAttribLocation = gl.getAttribLocation(this.program, "a_color");
+    const colorBuffer = gl.createBuffer();
+    gl.enableVertexAttribArray(colorAttribLocation);
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    setColors(gl);
+
+    size = 3;
+    type = gl.UNSIGNED_BYTE;
+    normalize = true;
+    stride = 0;
+    attribOffset = 0;
+
+    gl.vertexAttribPointer(
+      colorAttribLocation, size, type, normalize, stride, attribOffset
+    );
+
     this.translation = [100, 0, -500];
-    this.rotation = [1, 1, 1];
+    this.rotation = [Math.PI / 3, Math.PI, Math.PI / 4];
     this.scale = [1, 1, 1];
     this.fieldOfView = Math.PI / 3;
     let aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
@@ -100,11 +117,11 @@ class Three {
     gl.enable(gl.CULL_FACE);
 
     // Tell it to use our program (pair of shaders)
-    gl.useProgram(program);
+    gl.useProgram(this.program);
     gl.uniformMatrix4fv(this.matrixLocation, false, this.matrix);
 
     // Bind the attribute/buffer set we want.
-    gl.bindVertexArray(vao);
+    gl.bindVertexArray(this.vao);
 
     this.draw(0);
   }
@@ -124,6 +141,9 @@ class Three {
     this.matrix = m4.rotateZ(this.matrix, this.rotation[2]);
     this.matrix = m4.scale(this.matrix, this.scale);
     this.gl.uniformMatrix4fv(this.matrixLocation, false, this.matrix);
+
+    gl.useProgram(this.program);
+    gl.bindVertexArray(this.vao);
 
     // Draw the rectangle.
     const primitiveType = this.gl.TRIANGLES;
