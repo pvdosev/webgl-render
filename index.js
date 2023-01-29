@@ -1,10 +1,12 @@
 import {
-  resizeCanvasToDisplaySize,
   createShader,
   createProgram
 } from './libgl.js';
 
-import {m4} from './twgl-full.module.js';
+import {
+  m4, programs, primitives,
+  resizeCanvasToDisplaySize
+       } from './twgl-full.module.js';
 
 const vertexShaderSource = `#version 300 es
 
@@ -56,6 +58,8 @@ class Three {
     // we should have a glsl program on the gpu now!
 
     this.matrixLocation = gl.getUniformLocation(this.program, "u_matrix");
+    // this.uniforms =
+    //const uniformSetters = twgl.
     const positionAttributeLocation = gl.getAttribLocation(this.program, "a_position");
     const positionBuffer = gl.createBuffer();
 
@@ -93,14 +97,13 @@ class Three {
       colorAttribLocation, size, type, normalize, stride, attribOffset
     );
 
-    this.translation = [-500, 0, -500];
-    this.rotation = [Math.PI / 3, Math.PI, Math.PI / 4];
+    this.translation = [0, 0, 500];
+    this.rotation = [0, 0, 0];
     this.scale = [1, 1, 1];
     this.fieldOfView = Math.PI / 3;
     let aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
     const zNear = 1;
     const zFar = 2000;
-    this.matrix = m4.perspective(this.fieldOfView, aspect, zNear, zFar);
 
     resizeCanvasToDisplaySize(gl.canvas);
 
@@ -115,31 +118,25 @@ class Three {
 
     // tell webgl to cull faces
     gl.enable(gl.CULL_FACE);
-
-    // Tell it to use our program (pair of shaders)
-    gl.useProgram(this.program);
-    gl.uniformMatrix4fv(this.matrixLocation, false, this.matrix);
-
-    // Bind the attribute/buffer set we want.
-    gl.bindVertexArray(this.vao);
-
     this.draw(0);
   }
 
   draw(timestamp) {
+    resizeCanvasToDisplaySize(this.canvas);
     const gl = this.gl;
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     let aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
     const zNear = 1;
     const zFar = 2000;
-    //this.translation[0] += 1;
-    //this.translation[1] += 1;
     this.matrix = m4.perspective(this.fieldOfView, aspect, zNear, zFar);
-    this.matrix = m4.translate(this.matrix, this.translation);
-    this.matrix = m4.rotateX(this.matrix, this.rotation[0]);
-    this.matrix = m4.rotateY(this.matrix, this.rotation[1]);
-    this.matrix = m4.rotateZ(this.matrix, this.rotation[2]);
-    this.matrix = m4.scale(this.matrix, this.scale);
+    this.camera = m4.translation(this.translation);
+    this.camera = m4.rotateX(this.camera, this.rotation[0]);
+    this.camera = m4.rotateY(this.camera, this.rotation[1]);
+    this.camera = m4.rotateZ(this.camera, this.rotation[2]);
+    this.camera = m4.scale(this.camera, this.scale);
+    this.camera = m4.inverse(this.camera);
+    this.matrix = m4.multiply(this.matrix, this.camera);
     this.gl.uniformMatrix4fv(this.matrixLocation, false, this.matrix);
 
     gl.useProgram(this.program);
