@@ -1,10 +1,7 @@
 import {
-  createShader,
-  createProgram
-} from './libgl.js';
-
-import {
   m4, programs, primitives,
+  vertexArrays, setUniforms,
+  createProgramInfo,
   resizeCanvasToDisplaySize
        } from './twgl-full.module.js';
 
@@ -52,49 +49,23 @@ class Three {
       console.log("Ye can't webgl (your browser doesn't support v2?)");
     } // try and set up the webgl 2 context. TODO more error handling
 
-    const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-    this.program = createProgram(gl, vertexShader, fragmentShader);
+    this.programInfo = createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
     // we should have a glsl program on the gpu now!
 
-    this.matrixLocation = gl.getUniformLocation(this.program, "u_matrix");
-    // this.uniforms =
-    //const uniformSetters = twgl.
-    const positionAttributeLocation = gl.getAttribLocation(this.program, "a_position");
     const positionBuffer = gl.createBuffer();
-
-    this.vao = gl.createVertexArray();
-
-    gl.bindVertexArray(this.vao);
-    gl.enableVertexAttribArray(positionAttributeLocation);
-
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     setGeometry(gl);
 
-    let size = 3; // 2 components per iteration
-    let type = gl.FLOAT; // the data is 32bit floats
-    let normalize = false; // don't normalize the data
-    let stride = 0; // 0 = move forward size * sizeof(type) each iteration to get the next position
-    let attribOffset = 0; // start at the beginning of the buffer
-
-    gl.vertexAttribPointer(
-      positionAttributeLocation, size, type, normalize, stride, attribOffset
-    );
-
-    const colorAttribLocation = gl.getAttribLocation(this.program, "a_color");
     const colorBuffer = gl.createBuffer();
-    gl.enableVertexAttribArray(colorAttribLocation);
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
     setColors(gl);
 
-    size = 3;
-    type = gl.UNSIGNED_BYTE;
-    normalize = true;
-    stride = 0;
-    attribOffset = 0;
-
-    gl.vertexAttribPointer(
-      colorAttribLocation, size, type, normalize, stride, attribOffset
+    const attribs = {
+      a_position: {buffer: positionBuffer, size: 3, },
+      a_color: {buffer: colorBuffer, size: 3, type: gl.UNSIGNED_BYTE, normalize: true },
+    };
+    this.vao = vertexArrays.createVAOAndSetAttributes(
+      gl, this.programInfo.attribSetters, attribs
     );
 
     this.translation = [0, 0, 500];
@@ -137,9 +108,9 @@ class Three {
     this.camera = m4.scale(this.camera, this.scale);
     this.camera = m4.inverse(this.camera);
     this.matrix = m4.multiply(this.matrix, this.camera);
-    this.gl.uniformMatrix4fv(this.matrixLocation, false, this.matrix);
+    setUniforms(this.programInfo, {u_matrix: this.matrix});
 
-    gl.useProgram(this.program);
+    gl.useProgram(this.programInfo.program);
     gl.bindVertexArray(this.vao);
 
     // Draw the rectangle.
