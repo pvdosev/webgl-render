@@ -41,3 +41,17 @@ export class Node {
     });
   }
 }
+
+// walk down the tree, building an array of drawInfos
+// a drawInfo contains all the important gpu information of an object
+export function makeDrawList(node) {
+  let drawList = [];
+  if (node.drawInfo) {drawList.push(node.drawInfo)}
+  if (node.children)
+  {
+    for (const child of node.children) {
+      drawList.push(...makeDrawList(child));
+    }
+  }
+  return drawList;
+}

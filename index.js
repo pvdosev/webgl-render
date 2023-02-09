@@ -1,11 +1,12 @@
 import {
   m4, programs, primitives,
   vertexArrays, setUniforms,
-  createProgramInfo,
-  resizeCanvasToDisplaySize
+  createProgramInfo, setDefaults,
+  resizeCanvasToDisplaySize,
+  drawObjectList,
        } from './twgl-full.module.js';
 
-import {Node} from './scenegraph.js';
+import {Node, makeDrawList} from './scenegraph.js';
 
 const vertexShaderSource = `#version 300 es
 
@@ -51,26 +52,14 @@ class Three {
       console.log("Ye can't webgl (your browser doesn't support v2?)");
     } // try and set up the webgl 2 context. TODO more error handling
 
+    // the primitives module outputs attributes without a prefix
+    // and it's nice to have one for shaders imo
+    setDefaults({ attribPrefix: 'a_' });
+
     this.programInfo = createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
-    const FArray = primitives.create3DFVertices();
-    console.log(FArray);
 
-    const positionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, FArray.position, gl.STATIC_DRAW);
-
-    const colorBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, FArray.color, gl.STATIC_DRAW);
-
-    const attribs = {
-      a_position: {buffer: positionBuffer, size: 3, },
-      a_color: {buffer: colorBuffer, size: 3, type: gl.UNSIGNED_BYTE, normalize: true },
-    };
-    console.log(attribs);
-    this.vao = vertexArrays.createVAOAndSetAttributes(
-      gl, this.programInfo.attribSetters, attribs
-    );
+    this.sceneGraph = makeSceneGraph(gl, this.programInfo);
+    this.drawList = makeDrawList(this.sceneGraph);
 
     this.translation = [0, 0, 500];
     this.rotation = [0, 0, 0];
@@ -110,15 +99,7 @@ class Three {
     this.camera = m4.inverse(this.camera);
     this.matrix = m4.multiply(this.matrix, this.camera);
     setUniforms(this.programInfo, {u_matrix: this.matrix});
-
-    gl.useProgram(this.programInfo.program);
-    gl.bindVertexArray(this.vao);
-
-    // Draw the rectangle.
-    const primitiveType = this.gl.TRIANGLES;
-    const offset = 0;
-    const count = 16 * 6;
-    this.gl.drawArrays(primitiveType, offset, count);
+    drawObjectList(gl, this.drawList);
     window.requestAnimationFrame(this.draw.bind(this));
   }
 }
@@ -155,8 +136,42 @@ zRot.addEventListener('input', (event) => {
 });
 
 function makeSceneGraph(gl, programInfo) {
+  const FBufferInfo = primitives.create3DFBufferInfo(gl);
+  const crescentBufferInfo = primitives.createCrescentBufferInfo(gl, 100, 100, 50, 20, 8);
   return new Node({name: "Root", children: [
-    new Node({name: "F"}),
-    new Node({name: "Sphere"})
+    new Node({
+      name: "F",
+      transforms: {
+        translation: [0, 0, 0],
+        rotation: [0, 0, 2],
+        scale: [1, 1, 1],
+      },
+      drawInfo: {
+        vertexArray: vertexArrays.createVAOFromBufferInfo(
+          gl,
+          programInfo,
+          FBufferInfo,
+        ),
+        bufferInfo: FBufferInfo,
+        programInfo: programInfo,
+      }
+    }),
+    new Node({
+      name: "Crescent",
+      transforms: {
+        translation: [100, 100, 0],
+        rotation: [10, 1, 0],
+        scale: [1, 1, 1],
+      },
+      drawInfo: {
+        vertexArray: vertexArrays.createVAOFromBufferInfo(
+          gl,
+          programInfo,
+          crescentBufferInfo,
+        ),
+        bufferInfo: crescentBufferInfo,
+        programInfo: programInfo,
+      }
+    }),
   ]});
 }
