@@ -43,13 +43,19 @@ void main() {
 }
 `;
 
+/*
+ * Things I want to add:
+ * Orbit camera
+ * Mouse drag to move objects
+ */
+
 class Three {
   constructor () {
     this.canvas = document.querySelector("#mainCanvas");
     this.gl = this.canvas.getContext("webgl2");
     const gl = this.gl; // less typing
     if (!gl) {
-      console.log("Ye can't webgl (your browser doesn't support v2?)");
+      console.log("Ye can't webgl (your browser doesn't support webgl2?)");
     } // try and set up the webgl 2 context. TODO more error handling
 
     // the primitives module outputs attributes without a prefix
@@ -84,21 +90,25 @@ class Three {
 
   draw(timestamp) {
     resizeCanvasToDisplaySize(this.canvas);
-    const gl = this.gl;
-    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    let aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+    let aspect = this.canvas.clientWidth / this.canvas.clientHeight;
     const zNear = 1;
     const zFar = 2000;
-    this.matrix = m4.perspective(this.fieldOfView, aspect, zNear, zFar);
+    this.viewProjection = m4.perspective(this.fieldOfView, aspect, zNear, zFar);
     this.camera = m4.translation(this.translation);
     this.camera = m4.rotateX(this.camera, this.rotation[0]);
     this.camera = m4.rotateY(this.camera, this.rotation[1]);
     this.camera = m4.rotateZ(this.camera, this.rotation[2]);
     this.camera = m4.scale(this.camera, this.scale);
     this.camera = m4.inverse(this.camera);
-    this.matrix = m4.multiply(this.matrix, this.camera);
-    setUniforms(this.programInfo, {u_matrix: this.matrix});
+    this.viewProjection = m4.multiply(this.viewProjection, this.camera);
+    this.sceneGraph.updateWorldMatrix();
+    this.drawList.forEach(object => {
+      object.uniforms.u_matrix = m4.multiply(this.viewProjection, object.worldMatrix);
+    })
+
+    const gl = this.gl;
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     drawObjectList(gl, this.drawList);
     window.requestAnimationFrame(this.draw.bind(this));
   }
@@ -141,37 +151,37 @@ function makeSceneGraph(gl, programInfo) {
   return new Node({name: "Root", children: [
     new Node({
       name: "F",
+      drawable: true,
       transforms: {
         translation: [0, 0, 0],
         rotation: [0, 0, 2],
         scale: [1, 1, 1],
       },
-      drawInfo: {
-        vertexArray: vertexArrays.createVAOFromBufferInfo(
-          gl,
-          programInfo,
-          FBufferInfo,
-        ),
-        bufferInfo: FBufferInfo,
-        programInfo: programInfo,
-      }
+      uniforms: {},
+      vertexArray: vertexArrays.createVAOFromBufferInfo(
+        gl,
+        programInfo,
+        FBufferInfo,
+      ),
+      bufferInfo: FBufferInfo,
+      programInfo: programInfo,
     }),
     new Node({
       name: "Crescent",
+      drawable: true,
       transforms: {
         translation: [100, 100, 0],
         rotation: [10, 1, 0],
         scale: [1, 1, 1],
       },
-      drawInfo: {
-        vertexArray: vertexArrays.createVAOFromBufferInfo(
-          gl,
-          programInfo,
-          crescentBufferInfo,
-        ),
-        bufferInfo: crescentBufferInfo,
-        programInfo: programInfo,
-      }
+      uniforms: {},
+      vertexArray: vertexArrays.createVAOFromBufferInfo(
+        gl,
+        programInfo,
+        crescentBufferInfo,
+      ),
+      bufferInfo: crescentBufferInfo,
+      programInfo: programInfo,
     }),
   ]});
 }

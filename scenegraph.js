@@ -3,12 +3,28 @@ import {m4} from './twgl-full.module.js';
 export class Node {
   constructor (data) {
     this.children = [];
-    this.localMatrix = m4.identity();
     this.worldMatrix = m4.identity();
+    this.transforms = {
+      translation: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+    };
     // add custom properties
     if (data) {
       Object.assign(this, data);
     }
+  }
+
+  get transformMatrix() {
+    // in case we need some specific manipulation,
+    // give the object a localMatrix to replace the default
+    if (this.localMatrix) {return this.localMatrix};
+    let transMatrix = m4.translation(this.transforms.translation);
+    m4.rotateX(transMatrix, this.transforms.rotation[0], transMatrix);
+    m4.rotateY(transMatrix, this.transforms.rotation[1], transMatrix);
+    m4.rotateZ(transMatrix, this.transforms.rotation[2], transMatrix);
+    m4.scale(transMatrix, this.transforms.scale, transMatrix);
+    return transMatrix;
   }
 
   setParent(parent) {
@@ -19,7 +35,7 @@ export class Node {
       }
     }
     if (parent) {
-      parent.children.append(this);
+      parent.children.push(this);
     }
     this.parent = parent;
   }
@@ -28,25 +44,23 @@ export class Node {
     if (parentWorldMatrix) {
       // a matrix was passed in so do the math and
       // store the result in `this.worldMatrix`.
-      m4.multiply(parentWorldMatrix, this.localMatrix, this.worldMatrix);
+      m4.multiply(parentWorldMatrix, this.transformMatrix, this.worldMatrix);
     } else {
       // no matrix was passed in so just copy.
-      m4.copy(this.localMatrix, this.worldMatrix);
+      m4.copy(this.transformMatrix, this.worldMatrix);
     }
 
     // now process all the children
-    var worldMatrix = this.worldMatrix;
-    this.children.forEach(function(child) {
-      child.updateWorldMatrix(worldMatrix);
+    this.children.forEach((child) => {
+      child.updateWorldMatrix(this.worldMatrix);
     });
   }
 }
 
-// walk down the tree, building an array of drawInfos
-// a drawInfo contains all the important gpu information of an object
+// walk down the tree, building an array of nodes that contain draw data
 export function makeDrawList(node) {
   let drawList = [];
-  if (node.drawInfo) {drawList.push(node.drawInfo)}
+  if (node.drawable) {drawList.push(node)};
   if (node.children)
   {
     for (const child of node.children) {
