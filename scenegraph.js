@@ -16,7 +16,7 @@ export class Node {
   }
 
   get transformMatrix() {
-    // in case we need some specific manipulation,
+    // in case we need some specific transform,
     // give the object a localMatrix to replace the default
     if (this.localMatrix) {return this.localMatrix};
     let transMatrix = m4.translation(this.transforms.translation);

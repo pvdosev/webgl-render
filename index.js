@@ -8,6 +8,8 @@ import {
 
 import {Node, makeDrawList} from './scenegraph.js';
 
+import {loadGLB} from './gltf.js';
+
 const vertexShaderSource = `#version 300 es
 
 // an attribute is an input (in) to a vertex shader.
@@ -64,6 +66,7 @@ class Three {
 
     this.programInfo = createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
 
+    let test = loadGLB('./bucket.glb');
     this.sceneGraph = makeSceneGraph(gl, this.programInfo);
     this.drawList = makeDrawList(this.sceneGraph);
 
