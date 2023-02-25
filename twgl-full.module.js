@@ -1567,6 +1567,51 @@ function axisRotate(m, axis, angleInRadians, dst) {
   return dst;
 }
 
+// taken from https://github.com/greggman/twgl.js/pull/5
+function rotationFromQuaternion(q, dst) {
+  dst = dst || new MatType(16);
+
+  var x = q[0];
+  var y = q[1];
+  var z = q[2];
+  var w = q[3];
+  var x2 = x + x;
+  var y2 = y + y;
+  var z2 = z + z;
+  var xx = x * x2;
+  var xy = x * y2;
+  var xz = x * z2;
+  var yy = y * y2;
+  var yz = y * z2;
+  var zz = z * z2;
+  var wx = w * x2;
+  var wy = w * y2;
+  var wz = w * z2;
+
+  dst[0] = 1 - (yy + zz);
+  dst[4] = xy - wz;
+  dst[8] = xz + wy;
+
+  dst[1] = xy + wz;
+  dst[5] = 1 - (xx + zz);
+  dst[9] = yz - wx;
+
+  dst[2] = xz - wy;
+  dst[6] = yz + wx;
+  dst[10] = 1 - (xx + yy);
+
+  dst[3] = 0;
+  dst[7] = 0;
+  dst[11] = 0;
+
+  dst[12] = 0;
+  dst[13] = 0;
+  dst[14] = 0;
+  dst[15] = 1;
+
+  return dst;
+}
+
 /**
  * Creates a 4-by-4 matrix which scales in each dimension by an amount given by
  * the corresponding entry in the given vector; assumes the vector has three
@@ -1743,6 +1788,7 @@ var m4 = /*#__PURE__*/Object.freeze({
   rotationX: rotationX,
   rotationY: rotationY,
   rotationZ: rotationZ,
+  rotationFromQuaternion: rotationFromQuaternion,
   scale: scale,
   scaling: scaling,
   setAxis: setAxis,

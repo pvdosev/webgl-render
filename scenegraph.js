@@ -1,4 +1,4 @@
-import {m4} from './twgl-full.module.js';
+import {m4, setUniforms, setBuffersAndAttributes, drawBufferInfo, drawObjectList} from './twgl-full.module.js';
 
 export class Node {
   constructor (data) {
@@ -12,6 +12,16 @@ export class Node {
     // add custom properties
     if (data) {
       Object.assign(this, data);
+    }
+  }
+
+  render(gl, viewMatrix) {
+    const projectionMatrix = m4.multiply(viewMatrix, this.worldMatrix);
+    for (const primitive of this.primitives) {
+      gl.useProgram(primitive.programInfo.program);
+      setUniforms(primitive.programInfo, {u_matrix: projectionMatrix}, this.uniforms);
+      setBuffersAndAttributes(gl, primitive.programInfo, primitive.vertexArrayInfo);
+      drawBufferInfo(gl, primitive.vertexArrayInfo);
     }
   }
 
@@ -60,7 +70,7 @@ export class Node {
 // walk down the tree, building an array of nodes that contain draw data
 export function makeDrawList(node) {
   let drawList = [];
-  if (node.drawable) {drawList.push(node)};
+  if (node.drawable) {drawList.push(node)}
   if (node.children)
   {
     for (const child of node.children) {

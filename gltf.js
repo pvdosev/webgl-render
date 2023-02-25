@@ -1,3 +1,4 @@
+import {Node} from './scenegraph.js';
 // I'm lazy so only implementing the glb format
 export async function loadGLB(url) {
   const response = await fetch(url);
@@ -14,13 +15,42 @@ export async function loadGLB(url) {
   }
   const length = file[2];
   const jsonLength = file[3];
+  const bufferLength = file[jsonLength / 4];
   // the chunks are aligned to 4 bytes.
   // the standard says jsonLength is the length of the chunk data,
-  // but the blender exporter counts from the start of the file?
+  // but the actual files count from the start of the file?
   const rawJson = file.slice(5, jsonLength / 4 + 5);
   const textDecoder = new TextDecoder(); //utf8 by default
   const metadata = JSON.parse(textDecoder.decode(rawJson));
-  const buffers = file.slice(jsonLength / 4 + 5, length);
+  const buffers = file.slice(jsonLength / 4 + 5, length / 4);
   console.log(metadata);
   console.log(buffers);
+  console.log("total: " + length + ", json: " + jsonLength + ", buffer: " + bufferLength);
+  // loop through nodegraph
+  // build our own nodegraph
+  // add render data to it
+  function makeNodes(nodeNum) {
+    let output = new Node();
+    const nodeInfo =  metadata.nodes[nodeNum];
+    for (const node in nodeInfo.children) {
+      output.children.push(makeNodes(node));
+    }
+    if (nodeInfo.translation) {output.transforms.translation = nodeInfo.translation}
+    if (nodeInfo.rotation) {output.transforms.rotation = nodeInfo.rotation} // FIXME quaternion math
+    if (nodeInfo.scale) {output.transforms.scale = nodeInfo.scale}
+    if (nodeInfo.name) {output.name = nodeInfo.name}
+    const meshInfo = metadata.meshes[nodeInfo.mesh];
+    if (meshInfo) {
+      console.log(meshInfo.primitives[0]);
+    }
+  }
+
+  let root = new Node();
+  // use default scene, or scene 0 if undefined.
+  // technically there could be more than 1 scene, but let's ignore that
+  const sceneIndex = metadata.scene ?? 0;
+  for (const sceneNode in metadata.scenes[sceneIndex].nodes) {
+    root.children.push(makeNodes(sceneNode));
+  }
+  return root;
 }

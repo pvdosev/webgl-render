@@ -2,6 +2,7 @@ import {
   m4, programs, primitives,
   vertexArrays, setUniforms,
   createProgramInfo, setDefaults,
+  createVertexArrayInfo,
   resizeCanvasToDisplaySize,
   drawObjectList,
        } from './twgl-full.module.js';
@@ -42,6 +43,9 @@ out vec4 outColor;
 void main() {
   // Just set the output to a constant
   outColor = v_color;
+  if (v_color == vec4(0.0, 0.0, 0.0, 1.0)) {
+    outColor = vec4(1.0, 1.0, 0.0, 1.0);
+  }
 }
 `;
 
@@ -65,7 +69,6 @@ class Three {
     setDefaults({ attribPrefix: 'a_' });
 
     this.programInfo = createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
-
     let test = loadGLB('./bucket.glb');
     this.sceneGraph = makeSceneGraph(gl, this.programInfo);
     this.drawList = makeDrawList(this.sceneGraph);
@@ -105,14 +108,13 @@ class Three {
     this.camera = m4.inverse(this.camera);
     this.viewProjection = m4.multiply(this.viewProjection, this.camera);
     this.sceneGraph.updateWorldMatrix();
-    this.drawList.forEach(object => {
-      object.uniforms.u_matrix = m4.multiply(this.viewProjection, object.worldMatrix);
-    })
 
     const gl = this.gl;
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    drawObjectList(gl, this.drawList);
+    this.drawList.forEach(object => {
+      object.render(gl, this.viewProjection);
+    });
     window.requestAnimationFrame(this.draw.bind(this));
   }
 }
@@ -161,13 +163,16 @@ function makeSceneGraph(gl, programInfo) {
         scale: [1, 1, 1],
       },
       uniforms: {},
-      vertexArray: vertexArrays.createVAOFromBufferInfo(
-        gl,
-        programInfo,
-        FBufferInfo,
-      ),
-      bufferInfo: FBufferInfo,
-      programInfo: programInfo,
+      primitives: [{
+        vertexArrayInfo: vertexArrays.createVertexArrayInfo(
+          gl,
+          programInfo,
+          FBufferInfo,
+        ),
+        bufferInfo: FBufferInfo,
+        programInfo: programInfo,
+        uniforms: {},
+      }],
     }),
     new Node({
       name: "Crescent",
@@ -178,13 +183,16 @@ function makeSceneGraph(gl, programInfo) {
         scale: [1, 1, 1],
       },
       uniforms: {},
-      vertexArray: vertexArrays.createVAOFromBufferInfo(
-        gl,
-        programInfo,
-        crescentBufferInfo,
-      ),
-      bufferInfo: crescentBufferInfo,
-      programInfo: programInfo,
+      primitives: [{
+        vertexArrayInfo: vertexArrays.createVertexArrayInfo(
+          gl,
+          programInfo,
+          crescentBufferInfo,
+        ),
+        bufferInfo: crescentBufferInfo,
+        programInfo: programInfo,
+        uniforms: {},
+      }],
     }),
   ]});
 }
