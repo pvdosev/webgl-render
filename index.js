@@ -1,10 +1,7 @@
 import {
-  m4, programs, primitives,
-  vertexArrays, setUniforms,
+  m4, programs, primitives, vertexArrays,
   createProgramInfo, setDefaults,
-  createVertexArrayInfo,
   resizeCanvasToDisplaySize,
-  drawObjectList,
        } from './twgl-full.module.js';
 
 import {Node, makeDrawList} from './scenegraph.js';
@@ -56,7 +53,7 @@ void main() {
  */
 
 class Three {
-  constructor () {
+  constructor (nodeTree) {
     this.canvas = document.querySelector("#mainCanvas");
     this.gl = this.canvas.getContext("webgl2");
     const gl = this.gl; // less typing
@@ -69,9 +66,9 @@ class Three {
     setDefaults({ attribPrefix: 'a_' });
 
     this.programInfo = createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
-    let test = loadGLB('./bucket.glb');
-    this.sceneGraph = makeSceneGraph(gl, this.programInfo);
+    this.sceneGraph = nodeTree ? nodeTree : makeSceneGraph(gl, this.programInfo);
     this.drawList = makeDrawList(this.sceneGraph);
+    console.log(this.sceneGraph);
 
     this.translation = [0, 0, 500];
     this.rotation = [0, 0, 0];
@@ -92,6 +89,11 @@ class Three {
     // tell webgl to cull faces
     gl.enable(gl.CULL_FACE);
     this.draw(0);
+  }
+
+  switchSceneGraph(sceneGraph) {
+    this.sceneGraph = sceneGraph;
+    this.drawList = makeDrawList(sceneGraph);
   }
 
   draw(timestamp) {
@@ -120,6 +122,9 @@ class Three {
 }
 
 const renderer = new Three();
+const input = await loadGLB(renderer.gl, './testfiles/quad.glb', renderer.programInfo);
+console.log(input);
+renderer.switchSceneGraph(input);
 
 const xSlider = document.querySelector('#x-axis');
 xSlider.addEventListener('input', (event) => {

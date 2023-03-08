@@ -1,4 +1,4 @@
-import {m4, setUniforms, setBuffersAndAttributes, drawBufferInfo, drawObjectList} from './twgl-full.module.js';
+import {m4, setUniforms, setBuffersAndAttributes, drawBufferInfo} from './twgl-full.module.js';
 
 export class Node {
   constructor (data) {
