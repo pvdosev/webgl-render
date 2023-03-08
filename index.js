@@ -64,13 +64,10 @@ class Three {
     // the primitives module outputs attributes without a prefix
     // and it's nice to have one for shaders imo
     setDefaults({ attribPrefix: 'a_' });
-
+    this.sceneGraph = new Node();
+    this.drawList = [];
     this.programInfo = createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
-    this.sceneGraph = nodeTree ? nodeTree : makeSceneGraph(gl, this.programInfo);
-    this.drawList = makeDrawList(this.sceneGraph);
-    console.log(this.sceneGraph);
-
-    this.translation = [0, 0, 500];
+    this.translation = [0, 0, 10];
     this.rotation = [0, 0, 0];
     this.scale = [1, 1, 1];
     this.fieldOfView = Math.PI / 3;
@@ -122,23 +119,23 @@ class Three {
 }
 
 const renderer = new Three();
-const input = await loadGLB(renderer.gl, './testfiles/quad.glb', renderer.programInfo);
+const input = await loadGLB(renderer.gl, './bucket.glb', renderer.programInfo);
 console.log(input);
 renderer.switchSceneGraph(input);
 
 const xSlider = document.querySelector('#x-axis');
 xSlider.addEventListener('input', (event) => {
-  renderer.translation[0] = event.target.value * 1000;
+  renderer.translation[0] = event.target.value * 10;
 });
 
 const ySlider = document.querySelector('#y-axis');
 ySlider.addEventListener('input', (event) => {
-  renderer.translation[1] = event.target.value * 1000;
+  renderer.translation[1] = event.target.value * 10;
 });
 
 const zSlider = document.querySelector('#z-axis');
 zSlider.addEventListener('input', (event) => {
-  renderer.translation[2] = event.target.value * 1000;
+  renderer.translation[2] = event.target.value * 10;
 });
 const xRot = document.querySelector('#x-rot');
 xRot.addEventListener('input', (event) => {
@@ -154,50 +151,3 @@ const zRot = document.querySelector('#z-rot');
 zRot.addEventListener('input', (event) => {
   renderer.rotation[2] = event.target.value * 2 * Math.PI;
 });
-
-function makeSceneGraph(gl, programInfo) {
-  const FBufferInfo = primitives.create3DFBufferInfo(gl);
-  const crescentBufferInfo = primitives.createCrescentBufferInfo(gl, 100, 100, 50, 20, 8);
-  return new Node({name: "Root", children: [
-    new Node({
-      name: "F",
-      drawable: true,
-      transforms: {
-        translation: [0, 0, 0],
-        rotation: [0, 0, 2],
-        scale: [1, 1, 1],
-      },
-      uniforms: {},
-      primitives: [{
-        vertexArrayInfo: vertexArrays.createVertexArrayInfo(
-          gl,
-          programInfo,
-          FBufferInfo,
-        ),
-        bufferInfo: FBufferInfo,
-        programInfo: programInfo,
-        uniforms: {},
-      }],
-    }),
-    new Node({
-      name: "Crescent",
-      drawable: true,
-      transforms: {
-        translation: [100, 100, 0],
-        rotation: [10, 1, 0],
-        scale: [1, 1, 1],
-      },
-      uniforms: {},
-      primitives: [{
-        vertexArrayInfo: vertexArrays.createVertexArrayInfo(
-          gl,
-          programInfo,
-          crescentBufferInfo,
-        ),
-        bufferInfo: crescentBufferInfo,
-        programInfo: programInfo,
-        uniforms: {},
-      }],
-    }),
-  ]});
-}
