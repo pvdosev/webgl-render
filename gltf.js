@@ -1,5 +1,5 @@
 import {Node} from './scenegraph.js';
-import {attributes, createBufferFromTypedArray, createBufferInfoFromArrays, vertexArrays} from './twgl-full.module.js';
+import {attributes, m4, createBufferInfoFromArrays, vertexArrays} from './twgl-full.module.js';
 // I'm lazy so only implementing the glb format
 export async function loadGLB(gl, url, programInfo) {
   const response = await fetch(url);
@@ -28,16 +28,6 @@ export async function loadGLB(gl, url, programInfo) {
   const data = new Uint8Array(file.buffer, jsonLength + 28, bufferLength);
   if (metadata.buffers.length > 1)
   {console.warn("Uh oh, multiple buffers. This file may not work")}
-
-  console.assert(
-    bufferLength == metadata.buffers[0].byteLength && bufferLength == data.byteLength,
-    "Wrong buffer size!\nJSON: " + metadata.buffers[0].byteLength,
-    " Chunk: " + bufferLength,
-    " Memory: " + data.byteLength,
-  );
-  console.log("buffer", data);
-  console.log("json", metadata);
-  console.log("total: " + length + ", json: " + jsonLength + ", buffer: " + bufferLength);
 
   // no support for sparse data yet. we ignore byteStride
   const bufferViews = [];
@@ -103,7 +93,6 @@ export async function loadGLB(gl, url, programInfo) {
         data: accessors[primitive.indices],
         type: 5123,
       }
-      console.log("attributes", attributes);
       const meshInfo = {};
       meshInfo.bufferInfo = createBufferInfoFromArrays(gl, attributes);
       meshInfo.programInfo = programInfo;
@@ -121,7 +110,7 @@ export async function loadGLB(gl, url, programInfo) {
       output.children.push(makeNodes(node));
     }
     if ("translation" in nodeInfo) {output.transforms.translation = nodeInfo.translation}
-    if ("rotation" in nodeInfo) {output.transforms.rotation = nodeInfo.rotation} // FIXME quaternion math
+    if ("rotation" in nodeInfo) {output.transforms.rotation = nodeInfo.rotation}
     if ("scale" in nodeInfo) {output.transforms.scale = nodeInfo.scale}
     if ("name" in nodeInfo) {output.name = nodeInfo.name}
     if ("mesh" in nodeInfo) {

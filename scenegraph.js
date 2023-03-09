@@ -6,7 +6,7 @@ export class Node {
     this.worldMatrix = m4.identity();
     this.transforms = {
       translation: [0, 0, 0],
-      rotation: [0, 0, 0],
+      rotation: [0, 0, 0, 1],
       scale: [1, 1, 1],
     };
     // add custom properties
@@ -30,9 +30,7 @@ export class Node {
     // give the object a localMatrix to replace the default
     if (this.localMatrix) {return this.localMatrix};
     let transMatrix = m4.translation(this.transforms.translation);
-    m4.rotateX(transMatrix, this.transforms.rotation[0], transMatrix);
-    m4.rotateY(transMatrix, this.transforms.rotation[1], transMatrix);
-    m4.rotateZ(transMatrix, this.transforms.rotation[2], transMatrix);
+    m4.multiply(transMatrix, m4.rotationFromQuaternion(this.transforms.rotation), transMatrix);
     m4.scale(transMatrix, this.transforms.scale, transMatrix);
     return transMatrix;
   }
