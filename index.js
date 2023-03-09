@@ -99,11 +99,12 @@ class Three {
     const zNear = 1;
     const zFar = 2000;
     this.viewProjection = m4.perspective(this.fieldOfView, aspect, zNear, zFar);
-    this.camera = m4.translation(this.translation);
+    //this.camera = m4.translation(this.translation);
+    this.camera = m4.rotationY(this.rotation[1]);
     this.camera = m4.rotateX(this.camera, this.rotation[0]);
-    this.camera = m4.rotateY(this.camera, this.rotation[1]);
-    this.camera = m4.rotateZ(this.camera, this.rotation[2]);
-    this.camera = m4.scale(this.camera, this.scale);
+    this.camera = m4.translate(this.camera, [0, 0, 10]);
+    //this.camera = m4.rotateZ(this.camera, this.rotation[2]);
+    //this.camera = m4.scale(this.camera, this.scale);
     this.camera = m4.inverse(this.camera);
     this.viewProjection = m4.multiply(this.viewProjection, this.camera);
     this.sceneGraph.updateWorldMatrix();
