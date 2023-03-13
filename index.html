@@ -4,43 +4,10 @@
     <meta charset="UTF-8">
     <title>Ahh 3D</title>
     <style type="text/css">
-     #controls {position: absolute; display: flex;}
-     html, body, #mainCanvas {width: 100%; height: 100%; margin: 0;}
+     html, body, #mainCanvas {width: 100%; height: 100%; margin: 0; touch-action: none;}
     </style>
 </head>
 <body>
-    <div id="controls">
-        <div>
-            <input id="x-axis" type="range" name="x-axis" min="-1"
-            max="1" step="any"> <label style="color: white;" for=
-            "x-axis">X Axis</label>
-        </div>
-        <div>
-            <input id="y-axis" type="range" name="y-axis" min="-1"
-            max="1" step="any"> <label style="color: white;" for=
-            "y-axis">Y Axis</label>
-        </div>
-        <div>
-            <input id="z-axis" type="range" name="z-axis" min="0"
-            max="1" step="any"> <label style="color: white;" for=
-            "z-axis">Z Axis</label>
-        </div>
-        <div>
-            <input id="x-rot" type="range" name="x-rot" min="-1"
-            max="1" step="any"> <label style="color: white;" for=
-            "x-rot">X Rotation</label>
-        </div>
-        <div>
-            <input id="y-rot" type="range" name="y-rot" min="-1"
-            max="1" step="any"> <label style="color: white;" for=
-            "y-rot">Y Rotation</label>
-        </div>
-        <div>
-            <input id="z-rot" type="range" name="z-rot" min="-1"
-            max="1" step="any"> <label style="color: white;" for=
-            "z-rot">Z Rotation</label>
-        </div>
-    </div>
     <canvas id="mainCanvas">
         Cool browser! Sucks it can't show this demo though
     </canvas>

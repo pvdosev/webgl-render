@@ -1,5 +1,5 @@
 import {
-  m4, programs, primitives, vertexArrays,
+  m4, programs, vertexArrays,
   createProgramInfo, setDefaults,
   resizeCanvasToDisplaySize,
        } from './twgl-full.module.js';
@@ -46,11 +46,69 @@ void main() {
 }
 `;
 
-/*
- * Things I want to add:
- * Orbit camera
- * Mouse drag to move objects
- */
+function euclideanDist(x1, y1, x2, y2) {
+  return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+}
+
+// TODO: Add some acceleration and smoothing
+class Orbit {
+  eventCache = new Map();
+  cameraMatrix = m4.inverse(m4.translation([0, 0, 10]));
+  transforms = {
+    translation: [0, 0, 10],
+    rotation: [0, 0],
+  }
+  pinchZoomDist = 0;
+
+  constructor(canvas) {
+    this.canvas = canvas;
+    canvas.onpointerdown = this.handleStart.bind(this);
+    canvas.onpointerup = this.handleStop.bind(this);
+    canvas.onpointercancel = this.handleStop.bind(this);
+    canvas.onpointerout = this.handleStop.bind(this);
+    canvas.onpointermove = this.handleMove.bind(this);
+    canvas.onwheel = this.handleScroll.bind(this);
+  }
+  handleStop(event) {
+    this.eventCache.delete(event.pointerId);
+  }
+  handleStart(event) {
+    this.eventCache.set(event.pointerId, event);
+    if (this.eventCache.size === 2) {
+      const event1 = this.eventCache.get(0);
+      const event2 = this.eventCache.get(1);
+      this.pinchZoomDist = euclideanDist(event1.pageX, event1.pageY, event2.pageX, event2.pageY);
+    }
+  }
+  handleMove(event) {
+    if (this.eventCache.size > 0) {
+      const rotY = this.eventCache.get(event.pointerId).pageY - event.pageY;
+      const rotX = this.eventCache.get(event.pointerId).pageX - event.pageX;
+      this.transforms.rotation[0] = this.transforms.rotation[0] + (rotX * .01);
+      this.transforms.rotation[1] = this.transforms.rotation[1] + (rotY * .01);
+      this.calcMatrix();
+      this.eventCache.set(event.pointerId, event);
+    }
+    if (this.eventCache.size === 2) {
+      const event1 = this.eventCache.get(0);
+      const event2 = this.eventCache.get(1);
+      const currZoom = euclideanDist(event1.pageX, event1.pageY, event2.pageX, event2.pageY);
+      this.transforms.translation[2] =
+        this.transforms.translation[2] + (this.pinchZoomDist - currZoom) * .01;
+      this.pinchZoomDist = currZoom;
+    }
+  }
+  handleScroll(event) {
+    this.transforms.translation[2] = this.transforms.translation[2] + event.deltaY * .005;
+    this.calcMatrix();
+  }
+  calcMatrix() {
+    m4.rotationY(this.transforms.rotation[0], this.cameraMatrix);
+    m4.rotateX(this.cameraMatrix, this.transforms.rotation[1], this.cameraMatrix);
+    m4.translate(this.cameraMatrix, this.transforms.translation, this.cameraMatrix);
+    m4.inverse(this.cameraMatrix, this.cameraMatrix);
+  }
+}
 
 class Three {
   constructor (nodeTree) {
@@ -61,8 +119,6 @@ class Three {
       console.log("Ye can't webgl (your browser doesn't support webgl2?)");
     } // try and set up the webgl 2 context. TODO more error handling
 
-    // the primitives module outputs attributes without a prefix
-    // and it's nice to have one for shaders imo
     setDefaults({ attribPrefix: 'a_' });
     this.sceneGraph = new Node();
     this.drawList = [];
@@ -71,7 +127,7 @@ class Three {
     this.rotation = [0, 0, 0];
     this.scale = [1, 1, 1];
     this.fieldOfView = Math.PI / 3;
-
+    this.camera = new Orbit(this.canvas);
     resizeCanvasToDisplaySize(gl.canvas);
 
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -99,14 +155,7 @@ class Three {
     const zNear = 1;
     const zFar = 2000;
     this.viewProjection = m4.perspective(this.fieldOfView, aspect, zNear, zFar);
-    //this.camera = m4.translation(this.translation);
-    this.camera = m4.rotationY(this.rotation[1]);
-    this.camera = m4.rotateX(this.camera, this.rotation[0]);
-    this.camera = m4.translate(this.camera, [0, 0, 10]);
-    //this.camera = m4.rotateZ(this.camera, this.rotation[2]);
-    //this.camera = m4.scale(this.camera, this.scale);
-    this.camera = m4.inverse(this.camera);
-    this.viewProjection = m4.multiply(this.viewProjection, this.camera);
+    this.viewProjection = m4.multiply(this.viewProjection, this.camera.cameraMatrix);
     this.sceneGraph.updateWorldMatrix();
 
     const gl = this.gl;
@@ -123,32 +172,3 @@ const renderer = new Three();
 const input = await loadGLB(renderer.gl, './bucket.glb', renderer.programInfo);
 console.log(input);
 renderer.switchSceneGraph(input);
-
-const xSlider = document.querySelector('#x-axis');
-xSlider.addEventListener('input', (event) => {
-  renderer.translation[0] = event.target.value * 10;
-});
-
-const ySlider = document.querySelector('#y-axis');
-ySlider.addEventListener('input', (event) => {
-  renderer.translation[1] = event.target.value * 10;
-});
-
-const zSlider = document.querySelector('#z-axis');
-zSlider.addEventListener('input', (event) => {
-  renderer.translation[2] = event.target.value * 10;
-});
-const xRot = document.querySelector('#x-rot');
-xRot.addEventListener('input', (event) => {
-  renderer.rotation[0] = event.target.value * 2 * Math.PI;
-});
-
-const yRot = document.querySelector('#y-rot');
-yRot.addEventListener('input', (event) => {
-  renderer.rotation[1] = event.target.value * 2 * Math.PI;
-});
-
-const zRot = document.querySelector('#z-rot');
-zRot.addEventListener('input', (event) => {
-  renderer.rotation[2] = event.target.value * 2 * Math.PI;
-});
